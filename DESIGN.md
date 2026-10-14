@@ -123,9 +123,12 @@ Optional M6: a single-file, opt-in "bridge" script for anyone who *wants* source
 
 ---
 
-## 7. Open questions
+## 7. Decisions (2026-10-14)
 
-1. Board variant: one USB port (ILI9341) or two (ST7789)?
-2. Plan: Pro, Max 5×, Max 20×, or API key? This decides between source A and D.
-3. Is a tiny quota cost per poll acceptable? At 5-minute polls that's 288 one-token calls a day.
-4. Should alerts beep, or only show on the LED and screen?
+1. **Board:** two-port variant (USB-C + micro-USB). That's usually the ST7789 "CYD2USB" panel with inverted colours, but some two-port boards ship with ILI9341. M1 bring-up shows a test pattern with a tap to switch driver and inversion, and saves the choice. Flash over **micro-USB** (CH340); the USB-C port may be power-only.
+2. **Plan:** Pro, so source **A** (rate-limit headers with a setup-token). Pro limits are the lowest, which makes the session gauge the most useful one.
+3. **Quota cost per poll:** accepted.
+4. **Alerts:** LED and screen only. The speaker stays off and isn't driven.
+
+### Why PC-daemon monitors don't spend quota
+They run on the computer and either read Claude Code's own login token (which has `user:profile`) to call `/api/oauth/usage`, or add up the local JSONL logs. The device can't do either without software on the PC, so it pays one tiny request per poll instead.
