@@ -56,6 +56,31 @@ Its output tells us the real header names, whether OAuth inference needs particu
 
 ---
 
+### M0 results (2026-10-14, ESP32-WROOM-32 DevKit, Pro plan)
+
+| Check | Result |
+|---|---|
+| TLS with the pinned root CAs | ✅ Works. Handshake takes about **5.3 s**, so fetches must stay off the UI task. |
+| Heap | 305 KB free at boot; one TLS session costs about 41 KB; low-water mark 187 KB. Plenty of headroom. |
+| `GET /api/oauth/usage` with a setup-token | ❌ 403 `oauth_scope_insufficient`, needs `user:profile`. Confirms the table above. |
+| `POST /v1/messages`, plain | ❌ **429 `rate_limit_error`**, though nothing was rate-limited. Subscription tokens are refused outside Claude Code. |
+| Same request with Claude Code's system prompt | ✅ 200 OK. 33 input + 1 output tokens on Haiku; 5h utilisation still read 0.0 afterwards. |
+
+Headers returned (`anthropic-ratelimit-unified-…`):
+
+| Header | Example | Meaning |
+|---|---|---|
+| `5h-utilization` / `7d-utilization` | `0.0` / `0.46` | **Fraction 0–1**, not percent |
+| `5h-reset` / `7d-reset` | `1792037400` | Unix epoch seconds |
+| `5h-status` / `7d-status` / `status` | `allowed` | Throttle state per window and overall |
+| `representative-claim` | `five_hour` | Which window is currently binding |
+| `reset` | epoch | Reset time of the binding window |
+| `overage-status`, `overage-disabled-reason`, `fallback-percentage` | `rejected`, `org_level_disabled`, `0.5` | Extra-usage state; display only |
+
+No per-model weekly windows come back on Pro. The device only needs the headers, so it can close the connection without reading the (chunked) body.
+
+**Policy finding:** the plain request was refused and only the request presenting itself as Claude Code succeeded. Source A therefore works only by having the device present itself as Claude Code. Whether to rely on that is an open decision (see section 7) and is not settled by this spike.
+
 ## 3. Firmware architecture
 
 ```
