@@ -17,7 +17,7 @@ void configLoad(DeviceConfig& c) {
   c.paired = prefs.getBool("paired", false);
   c.utcOffset = prefs.getInt("utcoff", 0);
   c.utcKnown = prefs.getBool("utcknown", false);
-  c.displayMode = prefs.getUChar("disp", 0);
+  c.displayMode = prefs.getUChar("disp2", 0);
   prefs.end();
 
 #ifdef WIFI_SSID
@@ -41,14 +41,14 @@ void configSave(const DeviceConfig& c) {
   prefs.putBool("paired", c.paired);
   prefs.putInt("utcoff", c.utcOffset);
   prefs.putBool("utcknown", c.utcKnown);
-  prefs.putUChar("disp", c.displayMode);
+  prefs.putUChar("disp2", c.displayMode);
   prefs.end();
 }
 
 void configReset() {
   prefs.begin("cfg", false);
-  uint8_t disp = prefs.getUChar("disp", 0);  // the screen setting survives a reset
+  uint8_t disp = prefs.getUChar("disp2", 0);  // the screen setting survives a reset
   prefs.clear();
-  prefs.putUChar("disp", disp);
+  prefs.putUChar("disp2", disp);
   prefs.end();
 }
