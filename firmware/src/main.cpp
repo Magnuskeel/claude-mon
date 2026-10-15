@@ -19,8 +19,16 @@ struct Window {
   float pct = -1;       // 0-100, -1 = unknown
   uint32_t resetsAt = 0;  // unix seconds
 };
+struct Context {
+  float pct = -1;     // 0-100 of the current session's context window, -1 = unknown
+  uint32_t used = 0;  // tokens
+  uint32_t size = 0;  // tokens
+};
 struct Snapshot {
   Window session, week;
+  Context context;
+  char model[24] = "";
+  char project[32] = "";
   uint32_t receivedAt = 0;  // unix seconds
 };
 
@@ -68,47 +76,60 @@ static void setLed(float worst) {
   ledcWrite(3, 255);
 }
 
-static void drawGauge(int x, const char* label, const Window& w, uint32_t now) {
-  const int cx = 80, cy = 82, r1 = 66, r0 = 52;
+// One ring in a 106-px column: percentage in the middle, label and detail below.
+static void drawGauge(int x, const char* label, float pct, const char* detail) {
+  const int cx = 53, cy = 64, r1 = 48, r0 = 38;
   gauge.fillSprite(kBg);
   gauge.fillArc(cx, cy, r0, r1, 135, 405, kTrack);
-  float pct = effectivePct(w, now);
   if (pct > 0) gauge.fillArc(cx, cy, r0, r1, 135, 135 + 270 * min(pct, 100.0f) / 100, colorFor(pct));
 
   gauge.setTextDatum(middle_center);
   gauge.setTextColor(kText);
-  gauge.setFont(&fonts::FreeSansBold18pt7b);
-  char buf[24];
+  gauge.setFont(&fonts::FreeSansBold12pt7b);
+  char buf[16];
   if (pct < 0) strcpy(buf, "--");
   else snprintf(buf, sizeof(buf), "%d%%", (int)(pct + 0.5f));
   gauge.drawString(buf, cx, cy);
 
   gauge.setFont(&fonts::FreeSans9pt7b);
-  gauge.drawString(label, cx, cy + 74);
+  gauge.drawString(label, cx, cy + 62);
+  gauge.setFont(&fonts::Font2);
   gauge.setTextColor(kDim);
-  if (w.resetsAt && now) {
+  gauge.drawString(detail, cx, cy + 84);
+  gauge.pushSprite(x, 26);
+}
+
+static void resetDetail(char* out, size_t n, const Window& w, uint32_t now) {
+  if (!w.resetsAt || !now) snprintf(out, n, " ");
+  else if (now >= w.resetsAt) snprintf(out, n, "reset");
+  else {
     char dur[16];
-    if (now >= w.resetsAt) strcpy(buf, "reset");
-    else {
-      formatDuration(dur, sizeof(dur), w.resetsAt - now);
-      snprintf(buf, sizeof(buf), "resets %s", dur);
-    }
-    gauge.drawString(buf, cx, cy + 96);
+    formatDuration(dur, sizeof(dur), w.resetsAt - now);
+    snprintf(out, n, "resets %s", dur);
   }
-  gauge.pushSprite(x, 22);
 }
 
 static void drawScreen() {
   uint32_t now = nowUnix();
   tft.startWrite();
-  tft.fillRect(0, 0, 320, 22, kBg);
+  tft.fillRect(0, 0, 320, 26, kBg);
   tft.setFont(&fonts::FreeSans9pt7b);
   tft.setTextColor(kText, kBg);
   tft.setTextDatum(top_left);
-  tft.drawString("Claude usage", 6, 3);
+  tft.drawString(snap.project[0] ? snap.project : "Claude usage", 6, 4);
+  tft.setTextDatum(top_right);
+  tft.setTextColor(kDim, kBg);
+  tft.drawString(snap.model, 314, 4);
 
-  drawGauge(0, "Session (5h)", snap.session, now);
-  drawGauge(160, "Week (7d)", snap.week, now);
+  char detail[24];
+  const Context& c = snap.context;
+  if (c.size) snprintf(detail, sizeof(detail), "%luk / %luk", (unsigned long)(c.used / 1000), (unsigned long)(c.size / 1000));
+  else snprintf(detail, sizeof(detail), " ");
+  drawGauge(0, "Context", c.pct, detail);
+  resetDetail(detail, sizeof(detail), snap.session, now);
+  drawGauge(107, "Session", effectivePct(snap.session, now), detail);
+  resetDetail(detail, sizeof(detail), snap.week, now);
+  drawGauge(214, "Week", effectivePct(snap.week, now), detail);
 
   char buf[64];
   if (!snap.receivedAt) snprintf(buf, sizeof(buf), "waiting for Claude Code - %s", WiFi.localIP().toString().c_str());
@@ -145,11 +166,17 @@ static void handleUsage() {
   }
   readWindow(doc["five_hour"], snap.session);
   readWindow(doc["seven_day"], snap.week);
+  JsonVariantConst ctx = doc["context"];
+  if (ctx["pct"].is<float>()) snap.context.pct = constrain(ctx["pct"].as<float>(), 0.0f, 100.0f);
+  snap.context.used = ctx["used"] | 0u;
+  snap.context.size = ctx["size"] | 0u;
+  strlcpy(snap.model, doc["model"] | "", sizeof(snap.model));
+  strlcpy(snap.project, doc["project"] | "", sizeof(snap.project));
   snap.receivedAt = nowUnix();
   prefs.putBytes("snap", &snap, sizeof(snap));
   dirty = true;
   server.send(200, "application/json", "{\"ok\":true}");
-  Serial.printf("[usage] 5h=%.1f%% 7d=%.1f%%\n", snap.session.pct, snap.week.pct);
+  Serial.printf("[usage] ctx=%.1f%% 5h=%.1f%% 7d=%.1f%%\n", snap.context.pct, snap.session.pct, snap.week.pct);
 }
 
 static void connectWifi() {
@@ -184,7 +211,7 @@ void setup() {
   tft.setRotation(1);
   tft.setBrightness(180);
   gauge.setColorDepth(16);
-  gauge.createSprite(160, 200);
+  gauge.createSprite(106, 192);
 
   prefs.begin("claude-mon");
   if (prefs.getBytesLength("snap") == sizeof(snap)) prefs.getBytes("snap", &snap, sizeof(snap));
