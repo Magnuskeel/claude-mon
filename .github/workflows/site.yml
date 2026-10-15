@@ -41,7 +41,10 @@ jobs:
           cp site/index.html _site/
           cp firmware/.pio/build/cyd/{bootloader,partitions,firmware}.bin _site/firmware/cyd/
           cp ~/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin _site/firmware/cyd/
-          sed "s/__VERSION__/$version/" site/manifest.json > _site/manifest.json
+          # Version every URL so browsers never install a cached older build.
+          sed -e "s/__VERSION__/$version/" -e "s|\.bin\"|.bin?v=$version\"|" site/manifest.json > _site/manifest.json
+          sed -i "s|manifest=\"manifest.json\"|manifest=\"manifest.json?v=$version\"|" _site/index.html
+          grep -q "manifest.json?v=$version" _site/index.html
           python3 -m json.tool _site/manifest.json > /dev/null
           cp host/install.ps1 host/uninstall.ps1 host/claude-mon-*.ps1 _site/
           ls -R _site
