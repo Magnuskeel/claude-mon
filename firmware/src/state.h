@@ -64,6 +64,8 @@ struct AppState {
   int historyCount = 0;
   ServiceStatus service;
   Toast toast;
+  int32_t utcOffset = 0;  // seconds; reported by the PC
+  bool utcKnown = false;
 };
 
 uint32_t nowUnix();

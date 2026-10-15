@@ -12,6 +12,7 @@ $body = [ordered]@{
   project           = Get-ProjectName $data.cwd
   message           = [string]$data.message
   notification_type = [string]$data.notification_type
+  utc_offset        = Get-UtcOffset
 } | ConvertTo-Json -Compress
 
 [void](Send-ClaudeMon '/hook' $body)

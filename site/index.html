@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>claude-mon installer</title>
+<meta name="description" content="Install claude-mon, a desk display for Claude Code usage, on an ESP32 Cheap Yellow Display.">
+<script type="module" src="https://unpkg.com/esp-web-tools@10.4.0/dist/web/install-button.js?module"></script>
+<style>
+  :root {
+    --bg: #0e1116; --card: #181d25; --line: #2a313c; --text: #eceff4; --dim: #8b95a5; --faint: #5c6573;
+    --accent: #d97757; --green: #3fb950; --amber: #e3a33b; --blue: #58a6ff;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg: #f6f4f0; --card: #ffffff; --line: #e4e0d8; --text: #1d1f23; --dim: #5d6470; --faint: #8b919b;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  main { max-width: 760px; margin: 0 auto; padding: 48px 16px 64px; }
+  header { margin-bottom: 36px; }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .logo {
+    width: 40px; height: 40px; border-radius: 10px; background: var(--card); border: 1px solid var(--line);
+    display: grid; place-items: center;
+  }
+  h1 { font-size: 28px; margin: 0; letter-spacing: -0.01em; }
+  h1 span { color: var(--accent); }
+  .lede { color: var(--dim); margin: 14px 0 0; max-width: 60ch; }
+  .pills { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+  .pill { font-size: 13px; color: var(--dim); border: 1px solid var(--line); border-radius: 999px; padding: 3px 11px; }
+
+  .step {
+    background: var(--card); border: 1px solid var(--line); border-radius: 16px;
+    padding: 22px 22px 24px; margin-bottom: 16px; position: relative;
+  }
+  .step-head { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+  .num {
+    width: 28px; height: 28px; border-radius: 50%; background: var(--accent); color: #fff;
+    display: grid; place-items: center; font-weight: 700; font-size: 14px; flex: none;
+  }
+  h2 { font-size: 18px; margin: 0; }
+  .step p { color: var(--dim); margin: 6px 0 0; }
+
+  .boards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
+  @media (max-width: 560px) { .boards { grid-template-columns: 1fr; } }
+  .board { border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 4px; }
+  .board strong { font-size: 15px; }
+  .board small { color: var(--faint); font-size: 13px; flex: 1; margin-bottom: 12px; }
+  .tag { font-size: 11px; font-weight: 600; color: var(--accent); text-transform: uppercase; letter-spacing: .06em; }
+  button.install {
+    width: 100%; border: 0; border-radius: 10px; padding: 11px 14px; font: inherit; font-weight: 600;
+    background: var(--accent); color: #fff; cursor: pointer;
+  }
+  button.install.secondary { background: transparent; color: var(--text); border: 1px solid var(--line); }
+  button.install:hover { filter: brightness(1.08); }
+  .notice { font-size: 14px; color: var(--amber); }
+
+  .code {
+    display: flex; align-items: center; gap: 8px; margin-top: 14px;
+    background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px 10px 10px 14px;
+  }
+  .code code { flex: 1; font: 14px/1.4 ui-monospace, "Cascadia Code", Consolas, monospace; overflow-x: auto; white-space: nowrap; }
+  .copy {
+    border: 1px solid var(--line); background: var(--card); color: var(--text); border-radius: 8px;
+    padding: 6px 12px; font: inherit; font-size: 13px; cursor: pointer; flex: none;
+  }
+  .meta { font-size: 13px; color: var(--faint); margin-top: 10px; }
+  a { color: var(--accent); }
+
+  .pair { display: flex; gap: 18px; align-items: center; margin-top: 14px; flex-wrap: wrap; }
+  .screen {
+    background: #0e1116; color: #eceff4; border-radius: 10px; border: 6px solid #22262d;
+    width: 200px; padding: 12px; text-align: center; font-size: 11px; flex: none;
+  }
+  .screen b { display: block; color: #d97757; font-size: 26px; letter-spacing: 0.08em; margin: 6px 0; }
+
+  details { border-top: 1px solid var(--line); padding: 14px 2px; }
+  details:last-of-type { border-bottom: 1px solid var(--line); }
+  summary { cursor: pointer; font-weight: 600; }
+  details p, details li { color: var(--dim); }
+  h3 { font-size: 15px; color: var(--dim); font-weight: 600; margin: 36px 0 8px; text-transform: uppercase; letter-spacing: .06em; }
+  footer { margin-top: 40px; color: var(--faint); font-size: 13px; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="brand">
+      <div class="logo" aria-hidden="true">
+        <svg width="24" height="24" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="#2a313c" stroke-width="3"/><path d="M12 3a9 9 0 0 1 8.5 12" fill="none" stroke="#d97757" stroke-width="3" stroke-linecap="round"/></svg>
+      </div>
+      <h1>claude<span>-mon</span></h1>
+    </div>
+    <p class="lede">A desk display for Claude Code: session and weekly usage, context, a pace forecast,
+      Anthropic's service status, and a heads-up when Claude is waiting on you.</p>
+    <div class="pills">
+      <span class="pill">ESP32-2432S028R</span>
+      <span class="pill">No Anthropic token on the device</span>
+      <span class="pill">No background apps on your PC</span>
+    </div>
+  </header>
+
+  <section class="step">
+    <div class="step-head"><div class="num">1</div><h2>Flash the board and connect it to Wi-Fi</h2></div>
+    <p>Plug the board into this computer with a data cable (on two-port boards, use the micro-USB port),
+      pick your board, then click <b>Connect to Wi-Fi</b> when asked. Use Chrome or Edge on a desktop.</p>
+    <div class="boards">
+      <div class="board">
+        <span class="tag">Most common</span>
+        <strong>Two USB ports</strong>
+        <small>USB-C and micro-USB side by side (often sold as "CYD2USB").</small>
+        <esp-web-install-button manifest="manifest-cyd2usb.json">
+          <button slot="activate" class="install">Install</button>
+          <span slot="unsupported" class="notice">Your browser can't flash boards. Open this page in Chrome or Edge on a computer.</span>
+          <span slot="not-allowed" class="notice">This page needs to be opened over HTTPS.</span>
+        </esp-web-install-button>
+      </div>
+      <div class="board">
+        <span class="tag">Original</span>
+        <strong>One USB port</strong>
+        <small>A single micro-USB port.</small>
+        <esp-web-install-button manifest="manifest-cyd.json">
+          <button slot="activate" class="install secondary">Install</button>
+          <span slot="unsupported" class="notice">Use Chrome or Edge on a computer.</span>
+          <span slot="not-allowed" class="notice">This page needs to be opened over HTTPS.</span>
+        </esp-web-install-button>
+      </div>
+    </div>
+    <p class="meta">Not sure? Try "Two USB ports" first. If the screen stays dark or the colours look
+      wrong, install the other one; your settings are kept.</p>
+  </section>
+
+  <section class="step">
+    <div class="step-head"><div class="num">2</div><h2>Note the pairing code</h2></div>
+    <div class="pair">
+      <div class="screen" aria-hidden="true">Connected! Now pair your PC<b>482 913</b>Run the claude-mon installer…</div>
+      <p style="flex:1;min-width:220px;margin:0">Once the board is on Wi-Fi it shows a six-digit code.
+        It's how your PC proves it's yours. To show a new code later, hold your finger on the screen for 3 seconds.</p>
+    </div>
+  </section>
+
+  <section class="step">
+    <div class="step-head"><div class="num">3</div><h2>Set up Claude Code on your PC</h2></div>
+    <p>Open <b>PowerShell</b> and run this. It finds the board, asks for the code, and adds a status line
+      and hooks to Claude Code. Then restart Claude Code.</p>
+    <div class="code">
+      <code id="cmd">irm https://magnuskeel.github.io/claude-mon/install.ps1 | iex</code>
+      <button class="copy" data-copy="cmd">Copy</button>
+    </div>
+    <p class="meta">Prefer to read it first? <a href="install.ps1" download>Download install.ps1</a>,
+      then run <code>powershell -ExecutionPolicy Bypass -File install.ps1</code>.
+      It copies four small scripts to <code>%LOCALAPPDATA%\claude-mon</code> and backs up your
+      settings before changing them. Nothing runs in the background.</p>
+  </section>
+
+  <h3>Help</h3>
+  <details>
+    <summary>The board doesn't show up when I click Install</summary>
+    <p>Try another cable (many are charge-only), and on two-port boards use the micro-USB port. On Windows
+      you may need the <a href="https://www.wch-ic.com/downloads/CH341SER_EXE.html">CH340 driver</a> or the
+      <a href="https://www.silabs.com/developer-tools/usb-to-uart-bridge-vcp-drivers">CP210x driver</a>,
+      depending on the chip next to the USB port.</p>
+  </details>
+  <details>
+    <summary>I can't use the Wi-Fi step in the browser</summary>
+    <p>The board also opens its own Wi-Fi network called <b>claude-mon-setup</b>. Join it from your phone
+      and a setup page opens where you pick your network. The board only supports 2.4 GHz Wi-Fi.</p>
+  </details>
+  <details>
+    <summary>The installer can't find the board</summary>
+    <p>Make sure the PC and the board are on the same network. The board's address is shown on its
+      screen; type it in when the installer asks.</p>
+  </details>
+  <details>
+    <summary>Start over or move to a new network</summary>
+    <p>Hold the <b>BOOT</b> button on the board for 5 seconds. It forgets its Wi-Fi and pairing and
+      shows the setup screen again.</p>
+  </details>
+  <details>
+    <summary>Uninstall from the PC</summary>
+    <p>Run <code>powershell -ExecutionPolicy Bypass -File "$env:LOCALAPPDATA\claude-mon\uninstall.ps1"</code>.
+      It removes only claude-mon's hooks and status line and deletes its folder.</p>
+  </details>
+
+  <footer>Open source at <a href="https://github.com/Magnuskeel/claude-mon">github.com/Magnuskeel/claude-mon</a>.
+    Not affiliated with Anthropic.</footer>
+</main>
+<script>
+  document.querySelectorAll('[data-copy]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var text = document.getElementById(btn.dataset.copy).textContent;
+      try {
+        navigator.clipboard.writeText(text).then(function () {
+          btn.textContent = 'Copied';
+          setTimeout(function () { btn.textContent = 'Copy'; }, 1600);
+        });
+      } catch (e) {}
+    });
+  });
+</script>
+</body>
+</html>

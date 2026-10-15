@@ -9,6 +9,7 @@ $data = $raw | ConvertFrom-Json
 
 function To-Unix($v) {
   if ($null -eq $v) { return $null }
+  if ($v -is [datetime]) { return ([DateTimeOffset]$v.ToUniversalTime()).ToUnixTimeSeconds() }
   if ($v -is [string]) { return [DateTimeOffset]::Parse($v).ToUnixTimeSeconds() }
   return [int64]$v
 }
@@ -54,6 +55,7 @@ $body = [ordered]@{
   five_hour = $fiveHour; seven_day = $sevenDay; context = $context
   model = [string]$data.model.display_name
   project = Get-ProjectName $data.workspace.current_dir
+  utc_offset = Get-UtcOffset
 } | ConvertTo-Json -Compress
 
 # Skip unchanged updates for 60 s.

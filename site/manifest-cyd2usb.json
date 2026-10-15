@@ -1,0 +1,16 @@
+{
+  "name": "claude-mon (2.8" CYD, two USB ports)",
+  "version": "__VERSION__",
+  "new_install_prompt_erase": true,
+  "builds": [
+    {
+      "chipFamily": "ESP32",
+      "parts": [
+        { "path": "firmware/cyd2usb/bootloader.bin", "offset": 4096 },
+        { "path": "firmware/cyd2usb/partitions.bin", "offset": 32768 },
+        { "path": "firmware/cyd2usb/boot_app0.bin", "offset": 57344 },
+        { "path": "firmware/cyd2usb/firmware.bin", "offset": 65536 }
+      ]
+    }
+  ]
+}

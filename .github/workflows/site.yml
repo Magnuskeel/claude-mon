@@ -1,0 +1,63 @@
+# Builds the firmware for both board variants and publishes the web installer,
+# firmware and PC scripts to GitHub Pages (https://magnuskeel.github.io/claude-mon/).
+name: Build and publish
+
+on:
+  push:
+    branches: [master]
+    paths: ['firmware/**', 'host/**', 'site/**', '.github/workflows/site.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.platformio
+            firmware/.pio/libdeps
+          key: pio-${{ hashFiles('firmware/platformio.ini') }}
+      - run: pip install platformio
+      - run: pio run -d firmware -e cyd2usb -e cyd
+
+      - name: Assemble site
+        run: |
+          version=$(grep -oP 'FW_VERSION "\K[^"]+' firmware/src/version.h)
+          mkdir -p _site
+          cp site/index.html _site/
+          for env in cyd2usb cyd; do
+            mkdir -p _site/firmware/$env
+            cp firmware/.pio/build/$env/{bootloader,partitions,firmware}.bin _site/firmware/$env/
+            cp ~/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin _site/firmware/$env/
+            sed "s/__VERSION__/$version/" site/manifest-$env.json > _site/manifest-$env.json
+          done
+          cp host/install.ps1 host/uninstall.ps1 host/claude-mon-*.ps1 _site/
+          ls -R _site
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4

@@ -16,6 +16,13 @@ A standalone Claude usage monitor on the ESP32-2432S028R ("Cheap Yellow Display"
 >   The LED pulses amber until the session is answered.
 >
 > Tap to switch pages or to dismiss the alert.
+>
+> **Install flow:**
+> 1. Flash the board from the web installer (ESP Web Tools). It takes Wi-Fi details over USB using the Improv protocol, or from a fallback `claude-mon-setup` network with a setup page.
+> 2. The board generates its own key and shows a 6-digit pairing code.
+> 3. `install.ps1` finds the board (by mDNS name, then by scanning the local network), exchanges the code for the key, copies the scripts to `%LOCALAPPDATA%\claude-mon`, and merges the status line and hooks into `settings.json` after backing it up.
+>
+> The PC sends its UTC offset with each update, so the clock needs no time zone setting.
 
 ## Goals
 

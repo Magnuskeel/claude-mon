@@ -4,6 +4,7 @@
 #include <time.h>
 
 #include "display.h"
+#include "version.h"
 
 namespace {
 
@@ -11,6 +12,7 @@ LGFX tft;
 LGFX_Sprite band(&tft);
 const int kW = 320, kH = 240, kBandH = 40;
 int oy = 0;  // top of the band being drawn
+int32_t utcOffset = 0;
 
 // Palette (RGB888).
 const uint32_t kBg = 0x0E1116, kCard = 0x181D25, kTrack = 0x2A313C;
@@ -89,9 +91,9 @@ void duration(char* out, size_t n, int32_t secs) {
 
 void clockTime(char* out, size_t n, uint32_t t, bool withDay) {
   static const char* kDays[] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
-  time_t tt = t;
+  time_t tt = (time_t)t + utcOffset;
   struct tm tm;
-  localtime_r(&tt, &tm);
+  gmtime_r(&tt, &tm);
   int h = tm.tm_hour % 12;
   if (!h) h = 12;
   const char* ampm = tm.tm_hour < 12 ? "AM" : "PM";
@@ -116,7 +118,7 @@ void topBar(const AppState& s, uint32_t now) {
   fit(msg, kSmall, 205);
   text(msg, 21, 12, kSmall, st.known && dot != kGreen ? kText : kDim, middle_left);
 
-  if (now) {
+  if (now && s.utcKnown) {
     char clock[16];
     clockTime(clock, sizeof(clock), now, false);
     text(clock, 312, 12, kBodyBold, kText, middle_right);
@@ -286,7 +288,11 @@ void sessionsPage(const AppState& s, const char* ip, uint32_t now) {
     text("No active sessions", 160, 110, kBody, kDim, middle_center);
     text("Sessions appear once Claude Code hooks report in", 160, 134, kSmall, kFaint, middle_center);
   }
-  if (shown < 4) text(ip, 160, 232, kSmall, kFaint, middle_center);
+  if (shown < 4) {
+    char foot[48];
+    snprintf(foot, sizeof(foot), "%s  -  v%s", ip, FW_VERSION);
+    text(foot, 160, 232, kSmall, kFaint, middle_center);
+  }
 }
 
 // Splits `msg` into up to `maxLines` lines that fit `maxW`.
@@ -369,6 +375,7 @@ void uiMessage(const char* line1, const char* line2) {
 }
 
 void uiRender(const AppState& s, Page page, const char* ip, uint32_t now) {
+  utcOffset = s.utcOffset;
   const Session* alert = firstWaitingAlert(s);
   tft.startWrite();
   for (oy = 0; oy < kH; oy += kBandH) {
@@ -381,13 +388,67 @@ void uiRender(const AppState& s, Page page, const char* ip, uint32_t now) {
   tft.endWrite();
 }
 
-bool uiTapped() {
-  static bool wasDown = false;
-  static uint32_t lastTap = 0;
+void uiSetup(const char* status) {
+  for (oy = 0; oy < kH; oy += kBandH) {
+    band.fillScreen(kBg);
+    text("claude-mon", 160, 26, kBig, kAccent, middle_center);
+    text("Let's get you online", 160, 54, kBody, kText, middle_center);
+
+    rrect(10, 72, 300, 60, 10, kCard);
+    circle(26, 92, 9, kAccent);
+    text("1", 26, 92, kSmall, kBg, middle_center);
+    text("Using the web installer?", 42, 92, kBodyBold, kText, middle_left);
+    text("Click \"Connect to Wi-Fi\" on the page.", 42, 114, kSmall, kDim, middle_left);
+
+    rrect(10, 140, 300, 60, 10, kCard);
+    circle(26, 160, 9, kAccent);
+    text("2", 26, 160, kSmall, kBg, middle_center);
+    text("Or use your phone", 42, 160, kBodyBold, kText, middle_left);
+    char join[48];
+    snprintf(join, sizeof(join), "Join Wi-Fi \"%s\"", "claude-mon-setup");
+    text(join, 42, 182, kSmall, kDim, middle_left);
+
+    char msg[64];
+    strlcpy(msg, status, sizeof(msg));
+    fit(msg, kSmall, 300);
+    text(msg, 160, 222, kSmall, kFaint, middle_center);
+    band.pushSprite(0, oy);
+  }
+}
+
+void uiPairing(const char* code, const char* ip, bool firstTime) {
+  for (oy = 0; oy < kH; oy += kBandH) {
+    band.fillScreen(kBg);
+    text(firstTime ? "Connected! Now pair your PC" : "Pair a PC", 160, 26, kBody, kText, middle_center);
+    rrect(30, 48, 260, 76, 14, kCard);
+    char spaced[8];
+    snprintf(spaced, sizeof(spaced), "%.3s %.3s", code, code + 3);
+    text(spaced, 160, 86, kHuge, kAccent, middle_center);
+    text("Run the claude-mon installer on your PC", 160, 146, kSmall, kText, middle_center);
+    text("and enter this code when it asks.", 160, 164, kSmall, kText, middle_center);
+    char foot[48];
+    snprintf(foot, sizeof(foot), "Board address: %s", ip);
+    text(foot, 160, 196, kSmall, kDim, middle_center);
+    text(firstTime ? "Hold the screen 3 s later to pair again" : "Tap to close", 160, 222, kSmall, kFaint, middle_center);
+    band.pushSprite(0, oy);
+  }
+}
+
+Touch uiTouch() {
+  static bool wasDown = false, longFired = false;
+  static uint32_t downAt = 0;
   int32_t x, y;
   bool down = tft.getTouch(&x, &y);
-  bool tapped = down && !wasDown && millis() - lastTap > 300;
+  Touch ev = Touch::None;
+  if (down && !wasDown) {
+    downAt = millis();
+    longFired = false;
+  } else if (down && !longFired && millis() - downAt > 2500) {
+    longFired = true;
+    ev = Touch::LongPress;
+  } else if (!down && wasDown && !longFired && millis() - downAt > 30) {
+    ev = Touch::Tap;
+  }
   wasDown = down;
-  if (tapped) lastTap = millis();
-  return tapped;
+  return ev;
 }
