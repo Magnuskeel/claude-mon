@@ -49,7 +49,7 @@ $tmp = [IO.Path]::GetTempPath()
 if (-not $rl) {
   # Keep one sample so we can see what Claude Code actually sends.
   $raw | Set-Content (Join-Path $tmp 'claude-mon-statusline-debug.json')
-  return
+  if (-not $context) { return }
 }
 
 $body = @{
