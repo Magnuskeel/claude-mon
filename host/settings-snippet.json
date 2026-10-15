@@ -1,0 +1,13 @@
+{
+  "statusLine": {
+    "type": "command",
+    "command": "powershell -NoProfile -ExecutionPolicy Bypass -File C:\\claude-mon-src\\claude-mon\\host\\claude-mon-statusline.ps1"
+  },
+  "hooks": {
+    "UserPromptSubmit": [{ "hooks": [{ "type": "command", "command": "powershell -NoProfile -ExecutionPolicy Bypass -File C:\\claude-mon-src\\claude-mon\\host\\claude-mon-hook.ps1" }] }],
+    "Notification":     [{ "hooks": [{ "type": "command", "command": "powershell -NoProfile -ExecutionPolicy Bypass -File C:\\claude-mon-src\\claude-mon\\host\\claude-mon-hook.ps1" }] }],
+    "Stop":             [{ "hooks": [{ "type": "command", "command": "powershell -NoProfile -ExecutionPolicy Bypass -File C:\\claude-mon-src\\claude-mon\\host\\claude-mon-hook.ps1" }] }],
+    "SessionStart":     [{ "hooks": [{ "type": "command", "command": "powershell -NoProfile -ExecutionPolicy Bypass -File C:\\claude-mon-src\\claude-mon\\host\\claude-mon-hook.ps1" }] }],
+    "SessionEnd":       [{ "hooks": [{ "type": "command", "command": "powershell -NoProfile -ExecutionPolicy Bypass -File C:\\claude-mon-src\\claude-mon\\host\\claude-mon-hook.ps1" }] }]
+  }
+}

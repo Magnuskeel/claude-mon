@@ -2,6 +2,21 @@
 
 A standalone Claude usage monitor on the ESP32-2432S028R ("Cheap Yellow Display").
 
+> **Current architecture (supersedes the token-on-device plan below).** The board holds no
+> Anthropic credentials. On the PC, Claude Code's status line script (`host/claude-mon-statusline.ps1`)
+> and a hook script (`host/claude-mon-hook.ps1`) POST to the board's `/usage` and `/hook` endpoints
+> over the LAN, using a shared key. Each script runs for a moment and exits; nothing stays running.
+> The board reads Anthropic's public status page itself.
+>
+> **Screens:**
+> - **Overview:** service status and clock along the top; Context / Session / Week rings;
+>   pace forecast ("limit ~3:40 PM, 50m early"); a sessions summary or a "finished" banner.
+> - **Sessions:** one card per open Claude Code session, with its state and context bar.
+> - **Alert:** a full-screen "Claude needs you" card while any session waits for permission or input.
+>   The LED pulses amber until the session is answered.
+>
+> Tap to switch pages or to dismiss the alert.
+
 ## Goals
 
 1. **Nothing runs on the computer.** The device talks to Anthropic over Wi-Fi by itself. You only need a browser to flash it and set it up once.

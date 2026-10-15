@@ -1,2 +1,3 @@
 .pio/
 secrets.h
+host/config.ps1

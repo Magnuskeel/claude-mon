@@ -1,11 +1,9 @@
 # Claude Code status line for claude-mon.
 # Claude Code runs this on each status refresh and passes session JSON on stdin.
 # It prints a short status line and, when the numbers change (or every 60 s),
-# posts them to the display. Nothing runs in the background.
-$DeviceUrl = 'http://claude-mon.local/usage'   # or e.g. 'http://192.168.0.50/usage'
-$MonKey    = 'change-me-to-something-random'   # same as MON_KEY in firmware secrets.h
+# posts them to the board. Nothing runs in the background.
+. (Join-Path $PSScriptRoot 'claude-mon-common.ps1')
 
-$ErrorActionPreference = 'SilentlyContinue'
 $raw = [Console]::In.ReadToEnd()
 $data = $raw | ConvertFrom-Json
 
@@ -36,7 +34,6 @@ if ($cw) {
   if ($null -eq $pct -and $size -gt 0) { $pct = 100.0 * $used / $size }
   if ($null -ne $pct) { $context = @{ pct = [double]$pct; used = $used; size = $size } }
 }
-$project = if ($data.workspace.current_dir) { Split-Path $data.workspace.current_dir -Leaf } else { '' }
 
 $parts = @()
 if ($data.model.display_name) { $parts += $data.model.display_name }
@@ -52,22 +49,16 @@ if (-not $rl) {
   if (-not $context) { return }
 }
 
-$body = @{
+$body = [ordered]@{
+  session_id = [string]$data.session_id
   five_hour = $fiveHour; seven_day = $sevenDay; context = $context
-  model = [string]$data.model.display_name; project = $project
+  model = [string]$data.model.display_name
+  project = Get-ProjectName $data.workspace.current_dir
 } | ConvertTo-Json -Compress
-$stateFile = Join-Path $tmp 'claude-mon-last.txt'
-if (Test-Path $stateFile) {
-  $prev = (Get-Content $stateFile -Raw).Trim()
-  $age = ((Get-Date) - (Get-Item $stateFile).LastWriteTime).TotalSeconds
-  if (($prev -eq $body -or $prev -eq 'FAILED') -and $age -lt 60) { return }
-}
 
-try {
-  Invoke-RestMethod -Uri $DeviceUrl -Method Post -Body $body -ContentType 'application/json' `
-    -Headers @{ 'X-Claude-Mon-Key' = $MonKey } -TimeoutSec 2 | Out-Null
-  $body | Set-Content $stateFile
-} catch {
-  # Device offline: back off for 60 s so the status line stays fast.
-  'FAILED' | Set-Content $stateFile
-}
+# Skip unchanged updates for 60 s.
+$lastFile = Join-Path $tmp 'claude-mon-last.txt'
+if ((Test-Path $lastFile) -and ((Get-Content $lastFile -Raw).Trim() -eq $body) -and
+    ((Get-Date) - (Get-Item $lastFile).LastWriteTime).TotalSeconds -lt 60) { return }
+
+if (Send-ClaudeMon '/usage' $body) { $body | Set-Content $lastFile }
