@@ -1,14 +1,13 @@
-// LovyanGFX setup for the ESP32-2432S028R: panel on HSPI, XPT2046 touch on its own pins.
+// LovyanGFX setup for the ESP32-2432S028R ("Cheap Yellow Display"): panel on HSPI,
+// XPT2046 touch on its own pins. Boards ship with either an ILI9341 or an ST7789
+// controller, so begin() reads the panel ID and picks the matching driver.
 #pragma once
 #define LGFX_USE_V1
 #include <LovyanGFX.hpp>
 
 class LGFX : public lgfx::LGFX_Device {
-#ifdef PANEL_ST7789
-  lgfx::Panel_ST7789 panel_;
-#else
-  lgfx::Panel_ILI9341 panel_;
-#endif
+  lgfx::Panel_ILI9341 ili_;
+  lgfx::Panel_ST7789 st_;
   lgfx::Bus_SPI bus_;
   lgfx::Light_PWM light_;
   lgfx::Touch_XPT2046 touch_;
@@ -18,33 +17,54 @@ class LGFX : public lgfx::LGFX_Device {
     auto b = bus_.config();
     b.spi_host = HSPI_HOST;
     b.spi_mode = 0;
-    b.freq_write = 40000000;
+    b.freq_write = 27000000;  // 40 MHz corrupts rows on some panels
     b.freq_read = 16000000;
     b.pin_sclk = 14;
     b.pin_mosi = 13;
     b.pin_miso = 12;
     b.pin_dc = 2;
     bus_.config(b);
-    panel_.setBus(&bus_);
+    setupPanel(ili_);
+    setupPanel(st_);
+    setPanel(&ili_);
+  }
 
-    auto p = panel_.config();
+  // Initializes the display and returns the controller that was found.
+  const char* begin() {
+    setPanel(&ili_);
+    init();
+    uint32_t id = ili_.readCommand(0x04, 0, 4);  // RDDID
+    Serial.printf("[display] panel id %08lx\n", (unsigned long)id);
+    if ((id & 0xFF) == 0x85) {
+      setPanel(&st_);
+      init();
+      return "ST7789";
+    }
+    return "ILI9341";
+  }
+
+ private:
+  template <typename P>
+  void setupPanel(P& panel) {
+    panel.setBus(&bus_);
+    auto p = panel.config();
     p.pin_cs = 15;
     p.pin_rst = -1;
     p.pin_busy = -1;
     p.panel_width = 240;
     p.panel_height = 320;
     p.readable = true;
-    p.invert = PANEL_INVERT;
+    p.invert = false;
     p.rgb_order = false;
     p.bus_shared = false;
-    panel_.config(p);
+    panel.config(p);
 
     auto l = light_.config();
     l.pin_bl = 21;
     l.freq = 12000;
     l.pwm_channel = 7;
     light_.config(l);
-    panel_.setLight(&light_);
+    panel.setLight(&light_);
 
     auto t = touch_.config();
     t.spi_host = VSPI_HOST;
@@ -60,8 +80,6 @@ class LGFX : public lgfx::LGFX_Device {
     t.y_min = 200;
     t.y_max = 3700;
     touch_.config(t);
-    panel_.setTouch(&touch_);
-
-    setPanel(&panel_);
+    panel.setTouch(&touch_);
   }
 };

@@ -46,17 +46,11 @@
   h2 { font-size: 18px; margin: 0; }
   .step p { color: var(--dim); margin: 6px 0 0; }
 
-  .boards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
-  @media (max-width: 560px) { .boards { grid-template-columns: 1fr; } }
-  .board { border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 4px; }
-  .board strong { font-size: 15px; }
-  .board small { color: var(--faint); font-size: 13px; flex: 1; margin-bottom: 12px; }
-  .tag { font-size: 11px; font-weight: 600; color: var(--accent); text-transform: uppercase; letter-spacing: .06em; }
   button.install {
     width: 100%; border: 0; border-radius: 10px; padding: 11px 14px; font: inherit; font-weight: 600;
     background: var(--accent); color: #fff; cursor: pointer;
   }
-  button.install.secondary { background: transparent; color: var(--text); border: 1px solid var(--line); }
+  .install-row { margin-top: 18px; max-width: 280px; }
   button.install:hover { filter: brightness(1.08); }
   .notice { font-size: 14px; color: var(--amber); }
 
@@ -108,31 +102,16 @@
   <section class="step">
     <div class="step-head"><div class="num">1</div><h2>Flash the board and connect it to Wi-Fi</h2></div>
     <p>Plug the board into this computer with a data cable (on two-port boards, use the micro-USB port),
-      pick your board, then click <b>Connect to Wi-Fi</b> when asked. Use Chrome or Edge on a desktop.</p>
-    <div class="boards">
-      <div class="board">
-        <span class="tag">Most common</span>
-        <strong>Two USB ports</strong>
-        <small>USB-C and micro-USB side by side (often sold as "CYD2USB").</small>
-        <esp-web-install-button manifest="manifest-cyd2usb.json">
-          <button slot="activate" class="install">Install</button>
-          <span slot="unsupported" class="notice">Your browser can't flash boards. Open this page in Chrome or Edge on a computer.</span>
-          <span slot="not-allowed" class="notice">This page needs to be opened over HTTPS.</span>
-        </esp-web-install-button>
-      </div>
-      <div class="board">
-        <span class="tag">Original</span>
-        <strong>One USB port</strong>
-        <small>A single micro-USB port.</small>
-        <esp-web-install-button manifest="manifest-cyd.json">
-          <button slot="activate" class="install secondary">Install</button>
-          <span slot="unsupported" class="notice">Use Chrome or Edge on a computer.</span>
-          <span slot="not-allowed" class="notice">This page needs to be opened over HTTPS.</span>
-        </esp-web-install-button>
-      </div>
+      click <b>Install</b>, pick the board's port, then click <b>Connect to Wi-Fi</b> when asked.
+      Use Chrome or Edge on a desktop. Both versions of the board (one or two USB ports) use the same firmware.</p>
+    <div class="install-row">
+      <esp-web-install-button manifest="manifest.json">
+        <button slot="activate" class="install">Install claude-mon</button>
+        <span slot="unsupported" class="notice">Your browser can't flash boards. Open this page in Chrome or Edge on a computer.</span>
+        <span slot="not-allowed" class="notice">This page needs to be opened over HTTPS.</span>
+      </esp-web-install-button>
     </div>
-    <p class="meta">Not sure? Try "Two USB ports" first. If the screen stays dark or the colours look
-      wrong, install the other one; your settings are kept.</p>
+    <p class="meta">Updating later? Click Install again and don't erase the device; Wi-Fi and pairing are kept.</p>
   </section>
 
   <section class="step">

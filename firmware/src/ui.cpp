@@ -357,7 +357,7 @@ void alertPage(const AppState& s, const Session& x, uint32_t now) {
 }  // namespace
 
 void uiBegin() {
-  tft.init();
+  Serial.printf("[display] %s\n", tft.begin());
   tft.setRotation(1);
   tft.setBrightness(180);
   band.setColorDepth(16);

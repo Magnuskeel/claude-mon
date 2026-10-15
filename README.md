@@ -29,7 +29,7 @@ Go to **https://magnuskeel.github.io/claude-mon/** and follow the three steps:
 
 | Path | What |
 |---|---|
-| `firmware/` | PlatformIO project (`pio run -e cyd2usb -t upload`) |
+| `firmware/` | PlatformIO project (`pio run -t upload`) |
 | `host/` | PowerShell installer, status line and hook scripts |
 | `site/` | Web installer page (ESP Web Tools) |
 | `.github/workflows/site.yml` | Builds firmware and publishes the site to GitHub Pages |

@@ -1,5 +1,5 @@
 {
-  "name": "claude-mon (CYD, one USB port)",
+  "name": "claude-mon",
   "version": "__VERSION__",
   "new_install_prompt_erase": true,
   "builds": [
