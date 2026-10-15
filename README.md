@@ -10,6 +10,8 @@ A desk display for Claude Code on the ESP32-2432S028R ("Cheap Yellow Display").
 
 The board holds no Anthropic credentials. Claude Code's own status line and hooks push data
 to it over your local network. Each one runs for a moment and exits, so nothing stays running on your PC.
+An optional "claude-mon usage" scheduled task refreshes usage every 5 minutes, for when you only use
+cloud sessions (hidden, low priority, stopped by Windows after 1 minute).
 
 ## Install
 

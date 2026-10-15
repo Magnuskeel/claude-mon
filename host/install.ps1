@@ -6,7 +6,9 @@
 #   - copies four small scripts to %LOCALAPPDATA%\claude-mon
 #   - adds a status line and five hooks to %USERPROFILE%\.claude\settings.json
 #     (backed up first; existing hooks are kept)
-# No services, scheduled tasks, startup entries or drivers. Undo with:
+#   - optionally, a "claude-mon usage" scheduled task that refreshes usage every
+#     5 minutes (hidden, low priority, 1-minute limit), for cloud-only use
+# No services, startup entries or drivers. Undo with:
 #   powershell -ExecutionPolicy Bypass -File "$env:LOCALAPPDATA\claude-mon\uninstall.ps1"
 
 $ErrorActionPreference = 'Stop'
@@ -15,7 +17,8 @@ $ProgressPreference = 'SilentlyContinue'
 $BaseUrl = if ($env:CLAUDE_MON_BASE_URL) { $env:CLAUDE_MON_BASE_URL } else { 'https://magnuskeel.github.io/claude-mon' }
 $InstallDir = Join-Path $env:LOCALAPPDATA 'claude-mon'
 $SettingsPath = Join-Path $env:USERPROFILE '.claude\settings.json'
-$Scripts = 'claude-mon-common.ps1', 'claude-mon-hook.ps1', 'claude-mon-statusline.ps1', 'uninstall.ps1'
+$Scripts = 'claude-mon-common.ps1', 'claude-mon-hook.ps1', 'claude-mon-statusline.ps1', 'claude-mon-usage.ps1', 'uninstall.ps1'
+$TaskName = 'claude-mon usage'
 $HookEvents = 'UserPromptSubmit', 'Notification', 'Stop', 'SessionStart', 'SessionEnd'
 
 function Say($msg) { Write-Host "  $msg" }
@@ -81,7 +84,7 @@ Say 'This copies 4 scripts to'
 Say "  $InstallDir"
 Say 'and adds a status line and hooks to'
 Say "  $SettingsPath (backed up first)."
-Say 'Nothing runs in the background and nothing starts with Windows.'
+Say 'It can also add a small scheduled task that refreshes usage every 5 minutes (you choose).'
 $answer = Read-Host '  Continue? [Y/n]'
 if ($answer -and $answer -notmatch '^[Yy]') { Say 'Cancelled.'; return }
 
@@ -198,6 +201,31 @@ foreach ($ev in $HookEvents) {
 $json = $settings | ConvertTo-Json -Depth 32
 [IO.File]::WriteAllText($SettingsPath, $json, (New-Object Text.UTF8Encoding $false))
 Ok 'Status line and hooks added'
+
+# Optional usage refresh task ---------------------------------------------------
+if (Get-Command Register-ScheduledTask -ErrorAction SilentlyContinue) {
+  Write-Host ''
+  Say 'Usage normally updates when Claude Code runs on this PC. Cloud sessions run elsewhere,'
+  Say 'so a scheduled task can refresh it every 5 minutes instead (hidden, low priority,'
+  Say 'stopped by Windows after 1 minute if it ever hangs).'
+  $a = Read-Host '  Add the usage refresh task? [Y/n]'
+  if (-not $a -or $a -match '^[Yy]') {
+    $script = Join-Path $InstallDir 'claude-mon-usage.ps1'
+    # conhost --headless keeps a console window from flashing up every 5 minutes.
+    $action = New-ScheduledTaskAction -Execute 'conhost.exe' `
+      -Argument "--headless powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File `"$script`""
+    $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) -RepetitionInterval (New-TimeSpan -Minutes 5)
+    $taskSettings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit (New-TimeSpan -Minutes 1) -MultipleInstances IgnoreNew `
+      -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -Priority 7
+    $principal = New-ScheduledTaskPrincipal -UserId "$env:USERDOMAIN\$env:USERNAME" -LogonType Interactive -RunLevel Limited
+    Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Settings $taskSettings `
+      -Principal $principal -Description 'Refreshes Claude usage on the claude-mon display.' -Force | Out-Null
+    Ok "Scheduled task '$TaskName' added"
+  } else {
+    Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false -ErrorAction SilentlyContinue
+    Say 'Skipped. Re-run the installer to add it later.'
+  }
+}
 
 # Say hello -------------------------------------------------------------------
 try {

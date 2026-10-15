@@ -1,5 +1,6 @@
 # Removes claude-mon from this PC: its hooks and status line in Claude Code's
-# settings.json (other settings untouched) and the %LOCALAPPDATA%\claude-mon folder.
+# settings.json (other settings untouched), the "claude-mon usage" scheduled task
+# and the %LOCALAPPDATA%\claude-mon folder.
 $ErrorActionPreference = 'Stop'
 $InstallDir = Join-Path $env:LOCALAPPDATA 'claude-mon'
 $SettingsPath = Join-Path $env:USERPROFILE '.claude\settings.json'
@@ -32,8 +33,16 @@ if (Test-Path $SettingsPath) {
   }
 }
 
+if (Get-Command Unregister-ScheduledTask -ErrorAction SilentlyContinue) {
+  if (Get-ScheduledTask -TaskName 'claude-mon usage' -ErrorAction SilentlyContinue) {
+    Unregister-ScheduledTask -TaskName 'claude-mon usage' -Confirm:$false
+    Write-Host '  Removed the claude-mon usage scheduled task.'
+  }
+}
+
 $tmp = [IO.Path]::GetTempPath()
-'claude-mon-offline.txt', 'claude-mon-last.txt', 'claude-mon-statusline-debug.json' |
+'claude-mon-offline.txt', 'claude-mon-last.txt', 'claude-mon-statusline-debug.json', 'claude-mon-hook.log',
+  'claude-mon-usage-checked.txt', 'claude-mon-usage-debug.json' |
   ForEach-Object { Remove-Item (Join-Path $tmp $_) -ErrorAction SilentlyContinue }
 Remove-Item $InstallDir -Recurse -Force -ErrorAction SilentlyContinue
 Write-Host '  Deleted' $InstallDir
