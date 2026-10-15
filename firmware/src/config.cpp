@@ -18,6 +18,7 @@ void configLoad(DeviceConfig& c) {
   c.utcOffset = prefs.getInt("utcoff", 0);
   c.utcKnown = prefs.getBool("utcknown", false);
   c.displayMode = prefs.getUChar("disp2", 0);
+  c.flipped = prefs.getBool("flip", false);
   prefs.end();
 
 #ifdef WIFI_SSID
@@ -42,13 +43,16 @@ void configSave(const DeviceConfig& c) {
   prefs.putInt("utcoff", c.utcOffset);
   prefs.putBool("utcknown", c.utcKnown);
   prefs.putUChar("disp2", c.displayMode);
+  prefs.putBool("flip", c.flipped);
   prefs.end();
 }
 
 void configReset() {
   prefs.begin("cfg", false);
-  uint8_t disp = prefs.getUChar("disp2", 0);  // the screen setting survives a reset
+  uint8_t disp = prefs.getUChar("disp2", 0);  // screen settings survive a reset
+  bool flip = prefs.getBool("flip", false);
   prefs.clear();
   prefs.putUChar("disp2", disp);
+  prefs.putBool("flip", flip);
   prefs.end();
 }

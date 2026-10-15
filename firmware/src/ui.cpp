@@ -364,15 +364,17 @@ void alertPage(const AppState& s, const Session& x, uint32_t now) {
 
 }  // namespace
 
-uint8_t uiBegin(uint8_t displayMode) {
+uint8_t uiBegin(uint8_t displayMode, bool flipped) {
   uint8_t used = tft.begin(displayMode);
   Serial.printf("[display] %s\n", LGFX::modeName(used));
-  tft.setRotation(1);
+  uiSetFlipped(flipped);
   tft.setBrightness(180);
   band.setColorDepth(16);
   band.createSprite(kW, kBandH);
   return used;
 }
+
+void uiSetFlipped(bool flipped) { tft.setRotation(flipped ? 3 : 1); }
 
 const char* uiDisplayModeName(uint8_t mode) { return LGFX::modeName(mode); }
 uint8_t uiDisplayModeCount() { return LGFX::ModeCount; }
@@ -390,7 +392,7 @@ void uiDisplayTest(uint8_t mode) {
       text(kBars[i].name, 46 + i * 76, 162, kSmall, 0xFFFFFF, middle_center);
     }
     text("Black background, bars match their names,", 160, 190, kSmall, 0xFFFFFF, middle_center);
-    text("no stripes? Keep it. Else press BOOT again.", 160, 208, kSmall, 0xFFFFFF, middle_center);
+    text("no stripes? Keep it. Else hold BOOT 3 s again.", 160, 208, kSmall, 0xFFFFFF, middle_center);
     text("Hold BOOT 5 s to reset Wi-Fi and pairing.", 160, 228, kSmall, 0x808080, middle_center);
     pushBand();
   }

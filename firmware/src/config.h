@@ -10,6 +10,7 @@ struct DeviceConfig {
   int32_t utcOffset = 0;  // seconds, reported by the PC
   bool utcKnown = false;
   uint8_t displayMode = 0;  // 0 = auto-detect the screen controller
+  bool flipped = false;      // screen turned 180 degrees (e.g. in an enclosure)
 };
 
 void configLoad(DeviceConfig& c);

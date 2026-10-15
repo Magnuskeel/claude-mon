@@ -7,7 +7,9 @@ enum class Page : uint8_t { Overview, Sessions };
 enum class Touch : uint8_t { None, Tap, LongPress };
 
 // Starts the display in the given screen mode (0 = auto) and returns the mode used.
-uint8_t uiBegin(uint8_t displayMode);
+uint8_t uiBegin(uint8_t displayMode, bool flipped);
+// Turns the picture 180 degrees (for boards mounted upside down).
+void uiSetFlipped(bool flipped);
 const char* uiDisplayModeName(uint8_t mode);
 uint8_t uiDisplayModeCount();
 // Colour test card shown after switching screen modes.

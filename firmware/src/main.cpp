@@ -405,8 +405,9 @@ static void loopNormal() {
   updateLed(now);
 }
 
-// BOOT button: a short press switches to the next screen mode (shown as a test
-// card, then kept after a restart); holding it for 5 s forgets Wi-Fi and pairing.
+// BOOT button: a short press flips the screen 180 degrees; holding 3-5 s switches
+// to the next screen mode (shown as a test card, kept after a restart); holding
+// longer than 5 s forgets Wi-Fi and pairing.
 static void checkBootButton() {
   static uint32_t downSince = 0;
   if (digitalRead(kBootButton) == LOW) {
@@ -420,7 +421,14 @@ static void checkBootButton() {
     }
     return;
   }
-  if (downSince && millis() - downSince > 50 && millis() - downSince < 1500) {
+  uint32_t held = downSince ? millis() - downSince : 0;
+  downSince = 0;
+  if (held > 50 && held < 1500) {
+    cfg.flipped = !cfg.flipped;
+    configSave(cfg);
+    uiSetFlipped(cfg.flipped);
+    dirty = true;
+  } else if (held >= 3000) {
     uint8_t next = cfg.displayMode + 1;
     if (next >= uiDisplayModeCount()) next = 1;  // cycle through the explicit modes
     cfg.displayMode = next;
@@ -430,7 +438,6 @@ static void checkBootButton() {
     delay(200);
     ESP.restart();
   }
-  downSince = 0;
 }
 
 // ------------------------------------------------------------------ main
@@ -444,7 +451,7 @@ void setup() {
   pinMode(kBootButton, INPUT_PULLUP);
 
   configLoad(cfg);
-  uint8_t usedMode = uiBegin(cfg.displayMode);
+  uint8_t usedMode = uiBegin(cfg.displayMode, cfg.flipped);
   app.utcOffset = cfg.utcOffset;
   app.utcKnown = cfg.utcKnown;
   usagePrefs.begin("claude-mon");
