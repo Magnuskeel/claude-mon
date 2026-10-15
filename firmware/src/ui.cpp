@@ -356,12 +356,36 @@ void alertPage(const AppState& s, const Session& x, uint32_t now) {
 
 }  // namespace
 
-void uiBegin() {
-  Serial.printf("[display] %s\n", tft.begin());
+uint8_t uiBegin(uint8_t displayMode) {
+  uint8_t used = tft.begin(displayMode);
+  Serial.printf("[display] %s\n", LGFX::modeName(used));
   tft.setRotation(1);
   tft.setBrightness(180);
   band.setColorDepth(16);
   band.createSprite(kW, kBandH);
+  return used;
+}
+
+const char* uiDisplayModeName(uint8_t mode) { return LGFX::modeName(mode); }
+uint8_t uiDisplayModeCount() { return LGFX::ModeCount; }
+
+void uiDisplayTest(uint8_t mode) {
+  static const struct { uint32_t color; const char* name; } kBars[] = {
+      {0xFF0000, "RED"}, {0x00FF00, "GREEN"}, {0x0000FF, "BLUE"}, {0xFFFFFF, "WHITE"}};
+  for (oy = 0; oy < kH; oy += kBandH) {
+    band.fillScreen(0x000000);
+    char title[48];
+    snprintf(title, sizeof(title), "Screen mode %d: %s", mode, LGFX::modeName(mode));
+    text(title, 160, 18, kBodyBold, 0xFFFFFF, middle_center);
+    for (int i = 0; i < 4; i++) {
+      rect(10 + i * 76, 40, 72, 110, kBars[i].color);
+      text(kBars[i].name, 46 + i * 76, 162, kSmall, 0xFFFFFF, middle_center);
+    }
+    text("Black background, bars match their names,", 160, 190, kSmall, 0xFFFFFF, middle_center);
+    text("no stripes? Keep it. Else press BOOT again.", 160, 208, kSmall, 0xFFFFFF, middle_center);
+    text("Hold BOOT 5 s to reset Wi-Fi and pairing.", 160, 228, kSmall, 0x808080, middle_center);
+    band.pushSprite(0, oy);
+  }
 }
 
 void uiMessage(const char* line1, const char* line2) {

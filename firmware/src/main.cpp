@@ -405,8 +405,9 @@ static void loopNormal() {
   updateLed(now);
 }
 
-// Holding BOOT for 5 s forgets Wi-Fi and pairing.
-static void checkResetButton() {
+// BOOT button: a short press switches to the next screen mode (shown as a test
+// card, then kept after a restart); holding it for 5 s forgets Wi-Fi and pairing.
+static void checkBootButton() {
   static uint32_t downSince = 0;
   if (digitalRead(kBootButton) == LOW) {
     if (!downSince) downSince = millis();
@@ -417,9 +418,19 @@ static void checkResetButton() {
       delay(1500);
       ESP.restart();
     }
-  } else {
-    downSince = 0;
+    return;
   }
+  if (downSince && millis() - downSince > 50 && millis() - downSince < 1500) {
+    uint8_t next = cfg.displayMode + 1;
+    if (next >= uiDisplayModeCount()) next = 1;  // cycle through the explicit modes
+    cfg.displayMode = next;
+    configSave(cfg);
+    Serial.printf("[display] switching to mode %d (%s)\n", next, uiDisplayModeName(next));
+    usagePrefs.putBool("disptest", true);
+    delay(200);
+    ESP.restart();
+  }
+  downSince = 0;
 }
 
 // ------------------------------------------------------------------ main
@@ -432,12 +443,20 @@ void setup() {
   setLed(0, 0, 0);
   pinMode(kBootButton, INPUT_PULLUP);
 
-  uiBegin();
   configLoad(cfg);
+  uint8_t usedMode = uiBegin(cfg.displayMode);
   app.utcOffset = cfg.utcOffset;
   app.utcKnown = cfg.utcKnown;
   usagePrefs.begin("claude-mon");
-  if (usagePrefs.getBytesLength("usage") == sizeof(app.usage)) usagePrefs.getBytes("usage", &app.usage, sizeof(app.usage));
+  if (usagePrefs.getBool("disptest", false)) {
+    usagePrefs.putBool("disptest", false);
+    uiDisplayTest(usedMode);
+    for (uint32_t t = millis(); millis() - t < 8000;) {
+      checkBootButton();  // lets the user keep pressing BOOT to try the next mode
+      delay(10);
+    }
+  }
+  if (usagePrefs.isKey("usage") && usagePrefs.getBytesLength("usage") == sizeof(app.usage)) usagePrefs.getBytes("usage", &app.usage, sizeof(app.usage));
 
   improvBegin([](const char* ssid, const char* pass, String& url) {
     if (!joinWifi(ssid, pass, 20000)) {
@@ -469,7 +488,7 @@ void setup() {
 
 void loop() {
   improvLoop();
-  checkResetButton();
+  checkBootButton();
   if (restartAt && millis() > restartAt) ESP.restart();
   if (mode == Mode::Setup) loopSetup();
   else loopNormal();

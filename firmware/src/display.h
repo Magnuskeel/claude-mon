@@ -29,21 +29,45 @@ class LGFX : public lgfx::LGFX_Device {
     setPanel(&ili_);
   }
 
-  // Initializes the display and returns the controller that was found.
-  const char* begin() {
-    setPanel(&ili_);
-    init();
-    uint32_t id = ili_.readCommand(0x04, 0, 4);  // RDDID
-    Serial.printf("[display] panel id %08lx\n", (unsigned long)id);
-    if ((id & 0xFF) == 0x85) {
+  // Screen settings. Boards ship with different controllers and the panel ID can't
+  // always be read, so the user can also pick one by pressing BOOT.
+  enum Mode : uint8_t { Auto, Ili9341, St7789Inv, St7789, St7789InvBgr, St7789Bgr, ModeCount };
+
+  static const char* modeName(uint8_t m) {
+    static const char* kNames[] = {"Auto",          "ILI9341",       "ST7789 inverted",
+                                   "ST7789 normal", "ST7789 inverted BGR", "ST7789 normal BGR"};
+    return m < ModeCount ? kNames[m] : "?";
+  }
+
+  // Initializes the display in `mode` (Auto = detect) and returns the mode used.
+  uint8_t begin(uint8_t mode) {
+    if (mode == Auto || mode >= ModeCount) mode = detect();
+    if (mode == Ili9341) {
+      setPanel(&ili_);
+    } else {
+      auto p = st_.config();
+      p.invert = mode == St7789Inv || mode == St7789InvBgr;
+      p.rgb_order = mode == St7789InvBgr || mode == St7789Bgr;
+      st_.config(p);
       setPanel(&st_);
-      init();
-      return "ST7789";
     }
-    return "ILI9341";
+    init();
+    return mode;
   }
 
  private:
+  // A genuine ILI9341 answers RDID4 (0xD3) with 0x93 0x41; anything else is
+  // treated as the ST7789 that two-USB boards use.
+  uint8_t detect() {
+    setPanel(&ili_);
+    init();
+    uint32_t id = ili_.readCommand(0xD3, 0, 4);
+    Serial.printf("[display] RDID4 %08lx\n", (unsigned long)id);
+    for (int i = 0; i < 3; i++)
+      if (((id >> (8 * i)) & 0xFF) == 0x93 && ((id >> (8 * (i + 1))) & 0xFF) == 0x41) return Ili9341;
+    return St7789Inv;
+  }
+
   template <typename P>
   void setupPanel(P& panel) {
     panel.setBus(&bus_);

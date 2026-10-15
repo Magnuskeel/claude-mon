@@ -23,6 +23,7 @@ Go to **https://magnuskeel.github.io/claude-mon/** and follow the three steps:
    ```
 
 **Uninstall:** `powershell -ExecutionPolicy Bypass -File "$env:LOCALAPPDATA\claude-mon\uninstall.ps1"`.
+**Wrong screen colours or stripes:** press BOOT briefly to cycle screen settings (a test card shows each).
 **Reset the board:** hold BOOT for 5 seconds.
 
 ## Layout

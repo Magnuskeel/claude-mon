@@ -6,7 +6,12 @@
 enum class Page : uint8_t { Overview, Sessions };
 enum class Touch : uint8_t { None, Tap, LongPress };
 
-void uiBegin();
+// Starts the display in the given screen mode (0 = auto) and returns the mode used.
+uint8_t uiBegin(uint8_t displayMode);
+const char* uiDisplayModeName(uint8_t mode);
+uint8_t uiDisplayModeCount();
+// Colour test card shown after switching screen modes.
+void uiDisplayTest(uint8_t mode);
 void uiMessage(const char* line1, const char* line2);
 void uiRender(const AppState& s, Page page, const char* ip, uint32_t now);
 // First-run screen while waiting for Wi-Fi credentials.
