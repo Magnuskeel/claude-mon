@@ -55,6 +55,7 @@ static bool pairingOpen() { return !cfg.paired || (pairUntil && millis() < pairU
 static void newPairCode() {
   snprintf(pairCode, sizeof(pairCode), "%06lu", (unsigned long)(esp_random() % 1000000));
   pairFails = 0;
+  Serial.printf("[claude-mon] pairing code %s\n", pairCode);
 }
 
 // ------------------------------------------------------------------ LED
@@ -363,9 +364,16 @@ static void loopNormal() {
     dirty = true;
   }
 
-  static uint32_t lastHousekeeping = 0;
+  static uint32_t lastHousekeeping = 0, lastAnnounce = 0;
   if (millis() - lastHousekeeping > 5000) {
     lastHousekeeping = millis();
+    // Also print the essentials over USB, readable from the web installer's
+    // "Logs & Console" even if the screen shows nothing.
+    if (!lastAnnounce || millis() - lastAnnounce > 15000) {
+      lastAnnounce = millis();
+      if (pairingOpen()) Serial.printf("[claude-mon] address %s  pairing code %s\n", ipText, pairCode);
+      else Serial.printf("[claude-mon] address %s  paired\n", ipText);
+    }
     expireSessions(app, now);
     if (xSemaphoreTake(serviceLock, 0) == pdTRUE) {
       app.service = serviceShared;
