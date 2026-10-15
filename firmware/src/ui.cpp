@@ -26,6 +26,14 @@ const lgfx::IFont* const kBodyBold = &fonts::FreeSansBold9pt7b;
 const lgfx::IFont* const kBig = &fonts::FreeSansBold12pt7b;
 const lgfx::IFont* const kHuge = &fonts::FreeSansBold18pt7b;
 
+// Sends the current band to the screen. The transfer runs in the background (DMA),
+// so wait for it before the band buffer is redrawn; otherwise the next band's
+// pixels leak into this one.
+void pushBand() {
+  band.pushSprite(0, oy);
+  tft.waitDMA();
+}
+
 // Drawing helpers in screen coordinates; they translate into the current band.
 bool visible(int y, int h) { return y < oy + kBandH && y + h > oy; }
 void rect(int x, int y, int w, int h, uint32_t c) {
@@ -384,7 +392,7 @@ void uiDisplayTest(uint8_t mode) {
     text("Black background, bars match their names,", 160, 190, kSmall, 0xFFFFFF, middle_center);
     text("no stripes? Keep it. Else press BOOT again.", 160, 208, kSmall, 0xFFFFFF, middle_center);
     text("Hold BOOT 5 s to reset Wi-Fi and pairing.", 160, 228, kSmall, 0x808080, middle_center);
-    band.pushSprite(0, oy);
+    pushBand();
   }
 }
 
@@ -394,7 +402,7 @@ void uiMessage(const char* line1, const char* line2) {
     text("claude-mon", 160, 96, kBig, kAccent, middle_center);
     text(line1, 160, 132, kBody, kText, middle_center);
     if (line2) text(line2, 160, 156, kSmall, kDim, middle_center);
-    band.pushSprite(0, oy);
+    pushBand();
   }
 }
 
@@ -407,7 +415,7 @@ void uiRender(const AppState& s, Page page, const char* ip, uint32_t now) {
     if (alert) alertPage(s, *alert, now);
     else if (page == Page::Sessions) sessionsPage(s, ip, now);
     else overview(s, ip, now);
-    band.pushSprite(0, oy);
+    pushBand();
   }
   tft.endWrite();
 }
@@ -436,7 +444,7 @@ void uiSetup(const char* status) {
     strlcpy(msg, status, sizeof(msg));
     fit(msg, kSmall, 300);
     text(msg, 160, 222, kSmall, kFaint, middle_center);
-    band.pushSprite(0, oy);
+    pushBand();
   }
 }
 
@@ -454,7 +462,7 @@ void uiPairing(const char* code, const char* ip, bool firstTime) {
     snprintf(foot, sizeof(foot), "Board address: %s", ip);
     text(foot, 160, 196, kSmall, kDim, middle_center);
     text(firstTime ? "Hold the screen 3 s later to pair again" : "Tap to close", 160, 222, kSmall, kFaint, middle_center);
-    band.pushSprite(0, oy);
+    pushBand();
   }
 }
 
