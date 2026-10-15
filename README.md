@@ -8,10 +8,15 @@ A desk display for Claude Code on the ESP32-2432S028R ("Cheap Yellow Display").
 - **Sessions page:** every open Claude Code window with its state and context.
 - **Anthropic service status** from the public status page.
 
-The board holds no Anthropic credentials. Claude Code's own status line and hooks push data
-to it over your local network. Each one runs for a moment and exits, so nothing stays running on your PC.
-An optional "claude-mon usage" scheduled task refreshes usage every 5 minutes, for when you only use
-cloud sessions (hidden, low priority, stopped by Windows after 1 minute).
+The board holds no Anthropic credentials. Two things on your PC feed it over your local network,
+each running for a moment and exiting:
+
+- **Claude Code hooks:** session states, "needs you" alerts and context, in the terminal and the desktop app.
+- **The "claude-mon usage" scheduled task:** 5-hour and weekly usage every 2 minutes. It reads the same
+  account-wide count as `/usage`, so it covers cloud sessions and claude.ai too. It runs hidden at low
+  priority and is stopped by Windows after 1 minute.
+
+Your Claude Code status line is left alone.
 
 ## Install
 
@@ -34,7 +39,7 @@ Go to **https://magnuskeel.github.io/claude-mon/** and follow the three steps:
 | Path | What |
 |---|---|
 | `firmware/` | PlatformIO project (`pio run -t upload`) |
-| `host/` | PowerShell installer, status line and hook scripts |
+| `host/` | PowerShell installer, hook and usage scripts |
 | `site/` | Web installer page (ESP Web Tools) |
 | `.github/workflows/site.yml` | Builds firmware and publishes the site to GitHub Pages |
 | `spike/` | The first network experiment (kept for reference) |
@@ -46,5 +51,5 @@ Go to **https://magnuskeel.github.io/claude-mon/** and follow the three steps:
 |---|---|---|
 | `GET /info` | none | name, version, paired, pairing |
 | `POST /pair` `{code, pc}` | the code on screen | returns `{key}` |
-| `POST /usage` | `X-Claude-Mon-Key` | from the status line: rate limits, context, model, project |
+| `POST /usage` | `X-Claude-Mon-Key` | usage from the scheduled task; context, model and project from hooks |
 | `POST /hook` | `X-Claude-Mon-Key` | from hooks: `UserPromptSubmit`, `Notification`, `Stop`, `SessionStart`, `SessionEnd`, `Test` |

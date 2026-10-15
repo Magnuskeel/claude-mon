@@ -1,4 +1,4 @@
-# Shared by the status line and hook scripts: settings and a fast, fail-quiet POST.
+# Shared by the hook and usage scripts: settings and a fast, fail-quiet POST.
 $ErrorActionPreference = 'SilentlyContinue'
 $DeviceUrl = 'http://claude-mon.local'
 $MonKey = ''
@@ -65,7 +65,7 @@ function Send-ClaudeMon([string]$Path, [string]$Json) {
 }
 
 # ---------------------------------------------------------------------------
-# Usage and context without the status line (the desktop app has none).
+# Usage (scheduled task) and context (hooks).
 
 $StateDir = [IO.Path]::GetTempPath()
 

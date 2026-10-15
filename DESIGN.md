@@ -3,9 +3,10 @@
 A standalone Claude usage monitor on the ESP32-2432S028R ("Cheap Yellow Display").
 
 > **Current architecture (supersedes the token-on-device plan below).** The board holds no
-> Anthropic credentials. On the PC, Claude Code's status line script (`host/claude-mon-statusline.ps1`)
-> and a hook script (`host/claude-mon-hook.ps1`) POST to the board's `/usage` and `/hook` endpoints
-> over the LAN, using a shared key. Each script runs for a moment and exits; nothing stays running.
+> Anthropic credentials. On the PC, a hook script (`host/claude-mon-hook.ps1`; sessions, alerts and
+> context from the transcript) and a scheduled task (`host/claude-mon-usage.ps1`; usage every 2 minutes
+> via the `/usage` lookup) POST to the board's `/hook` and `/usage` endpoints over the LAN, using a
+> shared key. One source per job; each script runs for a moment and exits.
 > The board reads Anthropic's public status page itself.
 >
 > **Screens:**
@@ -20,7 +21,7 @@ A standalone Claude usage monitor on the ESP32-2432S028R ("Cheap Yellow Display"
 > **Install flow:**
 > 1. Flash the board from the web installer (ESP Web Tools). It takes Wi-Fi details over USB using the Improv protocol, or from a fallback `claude-mon-setup` network with a setup page.
 > 2. The board generates its own key and shows a 6-digit pairing code.
-> 3. `install.ps1` finds the board (by mDNS name, then by scanning the local network), exchanges the code for the key, copies the scripts to `%LOCALAPPDATA%\claude-mon`, and merges the status line and hooks into `settings.json` after backing it up.
+> 3. `install.ps1` finds the board (by mDNS name, then by scanning the local network), exchanges the code for the key, copies the scripts to `%LOCALAPPDATA%\claude-mon`, and merges the hooks into `settings.json` after backing it up, and registers the usage task.
 >
 > The PC sends its UTC offset with each update, so the clock needs no time zone setting.
 

@@ -125,8 +125,8 @@
 
   <section class="step">
     <div class="step-head"><div class="num">3</div><h2>Set up Claude Code on your PC</h2></div>
-    <p>Open <b>PowerShell</b> and run this. It finds the board, asks for the code, and adds a status line
-      and hooks to Claude Code. Then restart Claude Code.</p>
+    <p>Open <b>PowerShell</b> and run this. It finds the board, asks for the code, adds hooks to
+      Claude Code and a small scheduled task for your usage. Then restart Claude Code.</p>
     <div class="code">
       <code id="cmd">irm https://magnuskeel.github.io/claude-mon/install.ps1 | iex</code>
       <button class="copy" data-copy="cmd">Copy</button>
@@ -173,7 +173,7 @@
   <details>
     <summary>Uninstall from the PC</summary>
     <p>Run <code>powershell -ExecutionPolicy Bypass -File "$env:LOCALAPPDATA\claude-mon\uninstall.ps1"</code>.
-      It removes only claude-mon's hooks and status line and deletes its folder.</p>
+      It removes only claude-mon's hooks and scheduled task and deletes its folder.</p>
   </details>
 
   <footer>Open source at <a href="https://github.com/Magnuskeel/claude-mon">github.com/Magnuskeel/claude-mon</a>.

@@ -1,6 +1,7 @@
-# Sends 5-hour and weekly usage to the board. Run every 5 minutes by the
-# "claude-mon usage" scheduled task (added by the installer), so the board stays
-# current even when you only use cloud sessions. Finishes in about a second.
+# Sends 5-hour and weekly usage to the board. Run every 2 minutes by the
+# "claude-mon usage" scheduled task (added by the installer). This is the board's
+# only usage source: Anthropic's account-wide count, so it covers the desktop
+# app, the terminal, cloud sessions and claude.ai. Finishes in about a second.
 . (Join-Path $PSScriptRoot 'claude-mon-common.ps1')
 
 $usage = Get-ClaudeUsage
