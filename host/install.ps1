@@ -85,9 +85,27 @@ Say 'Nothing runs in the background and nothing starts with Windows.'
 $answer = Read-Host '  Continue? [Y/n]'
 if ($answer -and $answer -notmatch '^[Yy]') { Say 'Cancelled.'; return }
 
+# Already installed and paired? Re-running just updates the scripts and settings.
+$device = $null
+$key = $null
+$existing = Join-Path $InstallDir 'config.ps1'
+if (Test-Path $existing) {
+  $DeviceUrl = $null; $MonKey = $null
+  . $existing
+  if ($DeviceUrl -and $MonKey) {
+    try {
+      $probe = @{ session_id = ''; event = 'Test'; project = $env:COMPUTERNAME } | ConvertTo-Json -Compress
+      Invoke-RestMethod -Uri "$DeviceUrl/hook" -Method Post -ContentType 'application/json' -Body $probe `
+        -Headers @{ 'X-Claude-Mon-Key' = $MonKey } -TimeoutSec 4 | Out-Null
+      $device = $DeviceUrl
+      $key = $MonKey
+    } catch {}
+  }
+}
+
 # 1. Find the board ------------------------------------------------------------
 Step 1 'Finding your claude-mon board'
-$device = Find-Board
+if (-not $device) { $device = Find-Board }
 while (-not $device) {
   Say "Couldn't find it automatically. Make sure the board is on and connected to Wi-Fi."
   $typed = Read-Host '  Enter the address shown on the board (e.g. 192.168.0.42), or press Enter to quit'
@@ -100,10 +118,11 @@ Ok "Found claude-mon $($info.version) at $device"
 
 # 2. Pair ----------------------------------------------------------------------
 Step 2 'Pairing'
-if (-not $info.pairing) {
+if ($key) {
+  Ok 'Already paired with this board'
+} elseif (-not $info.pairing) {
   Say 'Hold your finger on the board''s screen for 3 seconds until a code appears.'
 }
-$key = $null
 for ($try = 1; -not $key -and $try -le 5; $try++) {
   $code = (Read-Host '  Enter the 6-digit code shown on the board') -replace '\D', ''
   try {
@@ -117,7 +136,7 @@ for ($try = 1; -not $key -and $try -le 5; $try++) {
   }
 }
 if (-not $key) { Fail 'Pairing failed.' }
-Ok 'Paired'
+if ($try -gt 1) { Ok 'Paired' }
 
 # 3. Install scripts -----------------------------------------------------------
 Step 3 'Installing scripts'
