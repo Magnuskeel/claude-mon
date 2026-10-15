@@ -138,8 +138,10 @@ function Get-ModelDisplayName([string]$id) {
 
 # Context used by the main conversation: the token count of the latest response
 # in the session transcript (subagent turns excluded), as the status line shows.
-function Get-TranscriptContext([string]$Path) {
-  if (-not $Path -or -not (Test-Path $Path)) { return $null }
+# Returns $null and sets $script:ContextMiss to the reason when nothing is found.
+function Read-TranscriptContext([string]$Path) {
+  if (-not $Path) { $script:ContextMiss = 'hook gave no transcript_path'; return $null }
+  if (-not (Test-Path -LiteralPath $Path)) { $script:ContextMiss = "transcript not found: $Path"; return $null }
   $fs = [IO.File]::Open($Path, 'Open', 'Read', 'ReadWrite')
   try {
     $fs.Seek([Math]::Max(0, $fs.Length - 512KB), 'Begin') | Out-Null
@@ -160,5 +162,49 @@ function Get-TranscriptContext([string]$Path) {
       model   = Get-ModelDisplayName ([string]$entry.message.model)
     }
   }
+  $script:ContextMiss = "no response with token counts yet ($($lines.Count) lines read)"
   return $null
+}
+
+# Claude Code can run the Stop hook a moment before it writes the final reply to
+# the transcript, so look again briefly before giving up.
+function Get-TranscriptContext([string]$Path) {
+  for ($try = 0; $try -lt 4; $try++) {
+    $ctx = Read-TranscriptContext $Path
+    if ($ctx -or $script:ContextMiss -like 'hook gave*') { return $ctx }
+    Start-Sleep -Milliseconds 500
+  }
+  return $null
+}
+
+# Local Claude Code sessions active in the last 2 hours (newest last), read from
+# the transcripts Claude Code keeps under ~/.claude/projects. Used by the
+# scheduled task so context stays current during long replies and comes back
+# after the board restarts.
+function Get-RecentSessions([int]$Max = 4) {
+  $root = if ($env:CLAUDE_CONFIG_DIR) { $env:CLAUDE_CONFIG_DIR } else { Join-Path $env:USERPROFILE '.claude' }
+  $projects = Join-Path $root 'projects'
+  if (-not (Test-Path $projects)) { return @() }
+  $cutoff = (Get-Date).AddHours(-2)
+  $files = Get-ChildItem -Path ([IO.Path]::Combine($projects, '*', '*.jsonl')) -File -ErrorAction SilentlyContinue |
+    Where-Object { $_.LastWriteTime -gt $cutoff } | Sort-Object LastWriteTime -Descending | Select-Object -First $Max
+  $out = @()
+  foreach ($f in ($files | Sort-Object LastWriteTime)) {
+    $ctx = Read-TranscriptContext $f.FullName
+    if (-not $ctx) { continue }
+    # The session's working folder is recorded on its transcript lines.
+    $project = ''
+    $tail = Get-Content -LiteralPath $f.FullName -Tail 20 -ErrorAction SilentlyContinue
+    foreach ($line in $tail) {
+      if ($line -match '"cwd"\s*:\s*"((?:[^"\\]|\\.)*)"') { $project = Get-ProjectName ($Matches[1] -replace '\\\\', '\') }
+    }
+    $out += @{
+      session_id    = $f.BaseName
+      project       = $project
+      context       = $ctx.context
+      model         = $ctx.model
+      last_activity = ([DateTimeOffset]$f.LastWriteTimeUtc).ToUnixTimeSeconds()
+    }
+  }
+  return $out
 }

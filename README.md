@@ -12,7 +12,8 @@ The board holds no Anthropic credentials. Two things on your PC feed it over you
 each running for a moment and exiting:
 
 - **Claude Code hooks:** session states, "needs you" alerts and context, in the terminal and the desktop app.
-- **The "claude-mon usage" scheduled task:** 5-hour and weekly usage every 2 minutes. It reads the same
+- **The "claude-mon usage" scheduled task:** every 2 minutes, 5-hour and weekly usage plus context for local
+  sessions active in the last 2 hours. Usage is the same
   account-wide count as `/usage`, so it covers cloud sessions and claude.ai too. It runs hidden at low
   priority and is stopped by Windows after 1 minute.
 

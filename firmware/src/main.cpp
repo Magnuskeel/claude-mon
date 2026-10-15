@@ -203,8 +203,9 @@ static void handleUsage() {
     if (ctx["pct"].is<float>()) x->ctxPct = constrain(ctx["pct"].as<float>(), 0.0f, 100.0f);
     x->ctxUsed = ctx["used"] | x->ctxUsed;
     x->ctxSize = ctx["size"] | x->ctxSize;
-    // Activity after a permission prompt means it was answered.
-    if (x->state == SessionState::Waiting && now - x->stateSince >= 3) {
+    // The transcript changing after Claude asked means the question was answered.
+    uint32_t activity = doc["last_activity"] | 0u;
+    if (x->state == SessionState::Waiting && activity > x->stateSince + 2) {
       x->state = SessionState::Working;
       x->stateSince = now;
     }

@@ -30,6 +30,8 @@ if ($sent -and $hookEvent -in 'Stop', 'SessionStart') {
     } | ConvertTo-Json -Compress -Depth 5
     $ok = Send-ClaudeMon '/usage' $update
     Write-ClaudeMonLog "  context=$($ctx.context.pct)% sent=$ok"
+  } else {
+    Write-ClaudeMonLog "  no context: $script:ContextMiss"
   }
 }
 exit 0
