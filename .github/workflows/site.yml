@@ -45,6 +45,7 @@ jobs:
             cp ~/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin _site/firmware/$env/
             sed "s/__VERSION__/$version/" site/manifest-$env.json > _site/manifest-$env.json
           done
+          for f in _site/manifest-*.json; do python3 -m json.tool "$f" > /dev/null; done
           cp host/install.ps1 host/uninstall.ps1 host/claude-mon-*.ps1 _site/
           ls -R _site
 
