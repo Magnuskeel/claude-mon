@@ -90,9 +90,53 @@ function Get-UsageWindow($w) {
   return @{ pct = [double]$w.utilization; resets_at = (ConvertTo-UnixTime $w.resets_at) }
 }
 
+function Test-LoginExpired($oauth) {
+  # Treat logins expiring within 5 minutes as expired, so a lookup never races the expiry.
+  return $oauth.expiresAt -and [int64]$oauth.expiresAt -lt [DateTimeOffset]::UtcNow.AddMinutes(5).ToUnixTimeMilliseconds()
+}
+
+# The desktop app keeps its own login, so the terminal login this script reads
+# goes stale when only the desktop app is used. Running the Claude Code command
+# line once makes it renew that login the normal way (a one-word Haiku prompt,
+# a few tokens). At most once every 30 minutes; claude-mon's hooks ignore it.
+function Update-ClaudeLogin {
+  $stamp = Join-Path $StateDir 'claude-mon-login-renewed.txt'
+  if ((Test-Path $stamp) -and ((Get-Date) - (Get-Item $stamp).LastWriteTime).TotalMinutes -lt 30) {
+    Write-ClaudeMonLog 'usage: login expired; renewal tried recently, waiting'
+    return $false
+  }
+  'renewing' | Set-Content $stamp
+
+  $claude = (Get-Command claude -ErrorAction SilentlyContinue | Select-Object -First 1).Source
+  if (-not $claude) {
+    foreach ($c in "$env:USERPROFILE\.local\bin\claude.exe", "$env:APPDATA\npm\claude.cmd") {
+      if (Test-Path $c) { $claude = $c; break }
+    }
+  }
+  if (-not $claude) {
+    Write-ClaudeMonLog 'usage: login expired and the claude command line was not found; run claude once in a terminal'
+    return $false
+  }
+
+  $env:CLAUDE_MON_SKIP = '1'  # inherited by Claude Code's hooks, which then do nothing
+  $out = Join-Path $StateDir 'claude-mon-renew-output.txt'
+  try {
+    $p = Start-Process -FilePath $claude -ArgumentList @('-p', 'Reply with OK', '--model', 'haiku') `
+      -WorkingDirectory $StateDir -NoNewWindow -PassThru -RedirectStandardOutput $out -RedirectStandardError "$out.err"
+    if (-not $p.WaitForExit(40000)) { $p.Kill(); Write-ClaudeMonLog 'usage: login renewal timed out'; return $false }
+  } catch {
+    Write-ClaudeMonLog "usage: login renewal failed: $($_.Exception.Message)"
+    return $false
+  } finally {
+    Remove-Item Env:\CLAUDE_MON_SKIP -ErrorAction SilentlyContinue
+  }
+  Write-ClaudeMonLog "usage: renewed login via $claude (exit $($p.ExitCode))"
+  return $true
+}
+
 # Reads 5-hour and weekly usage the way Claude Code's /usage does, using Claude
-# Code's own login on this PC. Never refreshes the login (that's Claude Code's
-# job); at most once a minute.
+# Code's own login on this PC. Never touches the login itself; if it has expired,
+# Claude Code is asked to renew it. At most once a minute.
 function Get-ClaudeUsage {
   $stamp = Join-Path $StateDir 'claude-mon-usage-checked.txt'
   if ((Test-Path $stamp) -and ((Get-Date) - (Get-Item $stamp).LastWriteTime).TotalSeconds -lt 60) { return $null }
@@ -103,9 +147,10 @@ function Get-ClaudeUsage {
   if (-not (Test-Path $credFile)) { Write-ClaudeMonLog "usage: no login file at $credFile"; return $null }
   $oauth = (Get-Content $credFile -Raw | ConvertFrom-Json).claudeAiOauth
   if (-not $oauth.accessToken) { Write-ClaudeMonLog 'usage: no Claude login in credentials'; return $null }
-  if ($oauth.expiresAt -and [int64]$oauth.expiresAt -lt [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()) {
-    Write-ClaudeMonLog 'usage: login expired; Claude Code will renew it'
-    return $null
+  if (Test-LoginExpired $oauth) {
+    if (-not (Update-ClaudeLogin)) { return $null }
+    $oauth = (Get-Content $credFile -Raw | ConvertFrom-Json).claudeAiOauth
+    if (Test-LoginExpired $oauth) { Write-ClaudeMonLog 'usage: login still expired after renewal'; return $null }
   }
 
   $url = if ($env:CLAUDE_MON_USAGE_URL) { $env:CLAUDE_MON_USAGE_URL } else { 'https://api.anthropic.com/api/oauth/usage' }

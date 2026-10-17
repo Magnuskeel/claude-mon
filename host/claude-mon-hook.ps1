@@ -3,6 +3,8 @@
 # Claude finishes a reply (Stop) or a session starts, the session's context use.
 # Usage comes from the scheduled task. Prints nothing: UserPromptSubmit output
 # would be added to Claude's context.
+# claude-mon's own login-renewal run of Claude Code: not a real session.
+if ($env:CLAUDE_MON_SKIP) { exit 0 }
 . (Join-Path $PSScriptRoot 'claude-mon-common.ps1')
 
 $data = [Console]::In.ReadToEnd() | ConvertFrom-Json

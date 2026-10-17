@@ -42,7 +42,8 @@ if (Get-Command Unregister-ScheduledTask -ErrorAction SilentlyContinue) {
 
 $tmp = [IO.Path]::GetTempPath()
 'claude-mon-offline.txt', 'claude-mon-last.txt', 'claude-mon-statusline-debug.json', 'claude-mon-hook.log',
-  'claude-mon-usage-checked.txt', 'claude-mon-usage-debug.json' |
+  'claude-mon-usage-checked.txt', 'claude-mon-usage-debug.json', 'claude-mon-login-renewed.txt',
+  'claude-mon-renew-output.txt', 'claude-mon-renew-output.txt.err' |
   ForEach-Object { Remove-Item (Join-Path $tmp $_) -ErrorAction SilentlyContinue }
 Remove-Item $InstallDir -Recurse -Force -ErrorAction SilentlyContinue
 Write-Host '  Deleted' $InstallDir
