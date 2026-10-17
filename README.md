@@ -15,7 +15,9 @@ each running for a moment and exiting:
 - **The "claude-mon usage" scheduled task:** every 2 minutes, 5-hour and weekly usage plus context for local
   sessions active in the last 2 hours. Usage is the same
   account-wide count as `/usage`, so it covers cloud sessions and claude.ai too. It runs hidden at low
-  priority and is stopped by Windows after 1 minute.
+  priority and is stopped by Windows after 1 minute. The lookup uses Claude Code's terminal login; the
+  desktop app doesn't renew that one, so when it has expired the task runs `claude -p` once (a one-word
+  Haiku prompt, at most every 30 minutes) to let Claude Code renew it.
 
 Your Claude Code status line is left alone.
 
