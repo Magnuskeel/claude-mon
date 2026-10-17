@@ -140,9 +140,12 @@ static void readUtcOffset(const JsonDocument& doc) {
   configSave(cfg);
 }
 
+// A fresh reading replaces both values. After a reset the new window may have no
+// reset time yet; keeping the old (past) one would pin the ring at 0%.
 static void readWindow(JsonVariantConst v, Window& w) {
-  if (v["pct"].is<float>()) w.pct = constrain(v["pct"].as<float>(), 0.0f, 100.0f);
-  if (v["resets_at"].is<uint32_t>()) w.resetsAt = v["resets_at"].as<uint32_t>();
+  if (!v["pct"].is<float>()) return;
+  w.pct = constrain(v["pct"].as<float>(), 0.0f, 100.0f);
+  w.resetsAt = v["resets_at"].is<uint32_t>() ? v["resets_at"].as<uint32_t>() : 0;
 }
 
 static void handleInfo() {

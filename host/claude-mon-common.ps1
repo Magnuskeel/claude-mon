@@ -84,8 +84,9 @@ function ConvertTo-UnixTime($v) {
   return [int64]$v
 }
 
+# A window with no usage yet (e.g. just after a reset) comes back empty: that's 0%.
 function Get-UsageWindow($w) {
-  if ($null -eq $w -or $null -eq $w.utilization) { return $null }
+  if ($null -eq $w -or $null -eq $w.utilization) { return @{ pct = 0.0; resets_at = $null } }
   return @{ pct = [double]$w.utilization; resets_at = (ConvertTo-UnixTime $w.resets_at) }
 }
 
@@ -117,15 +118,14 @@ function Get-ClaudeUsage {
     Write-ClaudeMonLog "usage: request failed: $($_.Exception.Message)"
     return $null
   }
-  $five = Get-UsageWindow $r.five_hour
-  $week = Get-UsageWindow $r.seven_day
-  if (-not $five -and -not $week) {
+  $names = @($r.PSObject.Properties.Name)
+  if ('five_hour' -notin $names -and 'seven_day' -notin $names) {
     # Unknown response shape: keep a copy so it can be supported.
     $r | ConvertTo-Json -Depth 8 | Set-Content (Join-Path $StateDir 'claude-mon-usage-debug.json')
     Write-ClaudeMonLog 'usage: unrecognised response, saved claude-mon-usage-debug.json'
     return $null
   }
-  return @{ five_hour = $five; seven_day = $week }
+  return @{ five_hour = (Get-UsageWindow $r.five_hour); seven_day = (Get-UsageWindow $r.seven_day) }
 }
 
 # "claude-opus-5-5" -> "Opus 5.5"
