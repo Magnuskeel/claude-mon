@@ -107,9 +107,15 @@ function Update-ClaudeLogin {
   }
   'renewing' | Set-Content $stamp
 
-  $claude = (Get-Command claude -ErrorAction SilentlyContinue | Select-Object -First 1).Source
+  # npm installs several 'claude' launchers (.ps1, .cmd, and an extensionless shell
+  # script); only some can be started directly, so pick by extension.
+  $claude = $null
+  foreach ($name in 'claude.exe', 'claude.cmd', 'claude.ps1') {
+    $found = Get-Command $name -CommandType Application, ExternalScript -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($found) { $claude = $found.Source; break }
+  }
   if (-not $claude) {
-    foreach ($c in "$env:USERPROFILE\.local\bin\claude.exe", "$env:APPDATA\npm\claude.cmd") {
+    foreach ($c in "$env:USERPROFILE\.local\bin\claude.exe", "$env:APPDATA\npm\claude.cmd", "$env:APPDATA\npm\claude.ps1") {
       if (Test-Path $c) { $claude = $c; break }
     }
   }
@@ -117,20 +123,33 @@ function Update-ClaudeLogin {
     Write-ClaudeMonLog 'usage: login expired and the claude command line was not found; run claude once in a terminal'
     return $false
   }
+  $file = $claude
+  $claudeArgs = @('-p', '"Reply with OK"', '--model', 'haiku')
+  if ($claude -like '*.ps1') {
+    $file = 'powershell.exe'
+    $claudeArgs = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', "`"$claude`"") + $claudeArgs
+  }
 
   $env:CLAUDE_MON_SKIP = '1'  # inherited by Claude Code's hooks, which then do nothing
   $out = Join-Path $StateDir 'claude-mon-renew-output.txt'
   try {
-    $p = Start-Process -FilePath $claude -ArgumentList @('-p', 'Reply with OK', '--model', 'haiku') `
+    $p = Start-Process -FilePath $file -ArgumentList $claudeArgs `
       -WorkingDirectory $StateDir -NoNewWindow -PassThru -RedirectStandardOutput $out -RedirectStandardError "$out.err"
     if (-not $p.WaitForExit(40000)) { $p.Kill(); Write-ClaudeMonLog 'usage: login renewal timed out'; return $false }
   } catch {
-    Write-ClaudeMonLog "usage: login renewal failed: $($_.Exception.Message)"
+    # Claude Code never started, so no tokens were spent: allow a retry next run.
+    Remove-Item $stamp -ErrorAction SilentlyContinue
+    Write-ClaudeMonLog "usage: couldn't start $claude : $($_.Exception.Message)"
     return $false
   } finally {
     Remove-Item Env:\CLAUDE_MON_SKIP -ErrorAction SilentlyContinue
   }
-  Write-ClaudeMonLog "usage: renewed login via $claude (exit $($p.ExitCode))"
+  if ($p.ExitCode -ne 0) {
+    $err = (Get-Content "$out.err" -ErrorAction SilentlyContinue | Select-Object -First 2) -join ' '
+    Write-ClaudeMonLog "usage: login renewal via $claude exited $($p.ExitCode): $err"
+  } else {
+    Write-ClaudeMonLog "usage: renewed login via $claude"
+  }
   return $true
 }
 
